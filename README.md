@@ -23,31 +23,6 @@ a built-in Modrinth store, and a little arcade (Snake and Pong) for when downloa
 - Parallel checksum-verified downloads, offline start for installed versions, live colour-coded console, crash hint.
 - Offline accounts (singleplayer, LAN, offline-mode servers). See *Known limits*.
 
-## Publishing your own downloads (one-time setup, about 15 minutes)
-GitHub builds the installers for you on real Windows, macOS and Linux machines. It is free for public repositories.
-
-1. Make a free account at github.com and create a new **public** repository.
-2. Upload this whole folder, including the hidden `.github` folder. Easiest with git:
-   ```
-   git init && git add . && git commit -m "Pushuuu Launcher"
-   git branch -M main
-   git remote add origin https://github.com/YOUR-NAME/YOUR-REPO.git
-   git push -u origin main
-   ```
-3. Create a release build by pushing a version tag:
-   ```
-   git tag v2.0.0 && git push origin v2.0.0
-   ```
-4. Open the **Actions** tab and wait about 10 minutes. The finished files appear under **Releases**, ready to share.
-
-You can also run the build by hand: Actions > *Build & Release* > *Run workflow* (files appear under the run's *Artifacts*).
-Change the version in `pushuuu_core.py` (`APP_VERSION`) and the file names follow automatically.
-
-### About security warnings
-The installers are **not code-signed**, so Windows SmartScreen ("More info" > "Run anyway") and macOS Gatekeeper
-(right-click > Open) will warn on first run. Removing the warnings requires paid certificates: a Windows code-signing
-certificate, and an Apple Developer ID ($99/year) plus notarization for macOS. This is normal for free projects.
-
 ## Run from source
 Python 3.9+, then `pip install -r requirements.txt`. On Linux also `sudo apt install python3-tk`.
 
