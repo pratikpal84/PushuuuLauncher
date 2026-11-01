@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Pushuuu Launcher
+GenericName=Minecraft Launcher
+Comment=Minecraft launcher with every version, mod loaders and Modrinth
+Exec=PushuuuLauncher
+Icon=pushuuu-launcher
+Terminal=false
+Categories=Game;
+Keywords=minecraft;launcher;mods;fabric;forge;

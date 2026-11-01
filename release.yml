@@ -1,0 +1,97 @@
+# Builds real installers for every desktop OS and attaches them to a GitHub Release.
+#   * Push a tag like  v2.0.0  ->  builds everything and publishes a Release with the downloads.
+#   * Or Actions tab -> "Build & Release" -> Run workflow  ->  builds, files appear under the run's Artifacts.
+# PyInstaller cannot cross-compile, so each OS is built on its own GitHub-hosted machine (free for public repos).
+name: Build & Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write   # lets the final job attach files to the Release
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: python -m pip install --upgrade pip requests pyinstaller
+      - name: Portable single-file .exe
+        run: pyinstaller --noconfirm --onefile --windowed --name PushuuuLauncher-Portable --icon packaging/icon.ico pushuuu_launcher.py
+      - name: App folder (input for the installer)
+        run: pyinstaller --noconfirm --windowed --name PushuuuLauncher --icon packaging/icon.ico pushuuu_launcher.py
+      - name: Setup.exe installer (Inno Setup)
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          $v = python -c "import pushuuu_core as c; print(c.APP_VERSION)"
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DAppVersion=$v" packaging\installer.iss
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: |
+            dist/PushuuuLauncher-Setup-*.exe
+            dist/PushuuuLauncher-Portable.exe
+
+  macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: macos-latest,   label: AppleSilicon, optional: false }
+          - { runner: macos-15-intel, label: Intel,        optional: true }   # optional: a failure here won't fail the release
+    runs-on: ${{ matrix.runner }}
+    continue-on-error: ${{ matrix.optional }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: python -m pip install --upgrade pip requests pyinstaller
+      - name: Build the .app
+        run: pyinstaller --noconfirm --windowed --name PushuuuLauncher --icon packaging/icon.icns --osx-bundle-identifier com.pushuuu.launcher pushuuu_launcher.py
+      - name: Pack the .dmg
+        run: bash packaging/make_dmg.sh ${{ matrix.label }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-${{ matrix.label }}
+          path: dist/*.dmg
+
+  linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Tk libraries
+        run: sudo apt-get update && sudo apt-get install -y python3-tk tk-dev
+      - run: python -m pip install --upgrade pip requests pyinstaller
+      - name: Build the app folder
+        run: pyinstaller --noconfirm --windowed --name PushuuuLauncher pushuuu_launcher.py
+      - name: Pack .deb and .AppImage
+        run: |
+          bash packaging/make_deb.sh
+          bash packaging/make_appimage.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: |
+            dist/*.deb
+            dist/*.AppImage
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [windows, macos, linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-files
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: release-files/*
+          generate_release_notes: true
